@@ -23,6 +23,7 @@ public:
 
 	//sio::message <-> FJsonValue
 	static TSharedPtr<FJsonValue> ToJsonValue(const sio::message::ptr& Message);
+	static void FillRawArrayWithValue(sio::message::list& List, TSharedPtr<FJsonValue> Value);
 	static sio::message::ptr ToSIOMessage(const TSharedPtr<FJsonValue>& JsonValue);
 
 	//std::string <-> FString

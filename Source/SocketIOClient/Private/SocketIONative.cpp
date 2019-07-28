@@ -194,7 +194,11 @@ void FSocketIONative::EmitRawBinary(const FString& EventName, uint8* Data, int32
 	PrivateClient->socket(USIOMessageConvert::StdString(Namespace))->emit(USIOMessageConvert::StdString(EventName), std::make_shared<std::string>((char*)Data, DataLength));
 }
 
-void FSocketIONative::OnEvent(const FString& EventName, TFunction< void(const FString&, const TSharedPtr<FJsonValue>&)> CallbackFunction, const FString& Namespace /*= FString(TEXT("/"))*/)
+void FSocketIONative::OnEvent(const FString& EventName, 
+	TFunction< void(const FString&, 
+	const TSharedPtr<FJsonValue>&)> CallbackFunction,
+	const FString& Namespace /*= FString(TEXT("/"))*/,
+	TFunction< void(TSharedPtr<FJsonValue>&)> ClientAckCallback /* = nullptr */)
 {
 	//Keep track of all the bound native JsonValue functions
 	FSIOBoundEvent BoundEvent;
@@ -202,21 +206,43 @@ void FSocketIONative::OnEvent(const FString& EventName, TFunction< void(const FS
 	BoundEvent.Namespace = Namespace;
 	EventFunctionMap.Add(EventName, BoundEvent);
 
-	OnRawEvent(EventName, [&, CallbackFunction](const FString& Event, const sio::message::ptr& RawMessage) {
+	TFunction< void(sio::message::list &)> ClientAckRawCallback = nullptr;
+
+	//Fill server acknowledgment if used
+	if (ClientAckCallback)
+	{
+		ClientAckRawCallback = [&, ClientAckCallback](sio::message::list &ClientAckResponse)
+		{
+			TSharedPtr<FJsonValue> AckValue;
+			ClientAckCallback(AckValue);
+			USIOMessageConvert::FillRawArrayWithValue(ClientAckResponse, AckValue);
+		};
+	}
+
+	OnRawEvent(EventName, [&, CallbackFunction](const FString& Event, const sio::message::ptr& RawMessage)
+	{
 		CallbackFunction(Event, USIOMessageConvert::ToJsonValue(RawMessage));
-	}, Namespace);
+	}, Namespace, ClientAckRawCallback);
 }
 
-void FSocketIONative::OnRawEvent(const FString& EventName, TFunction< void(const FString&, const sio::message::ptr&)> CallbackFunction, const FString& Namespace /*= FString(TEXT("/"))*/)
+void FSocketIONative::OnRawEvent(const FString& EventName, 
+	TFunction< void(const FString&, const sio::message::ptr&)> CallbackFunction, 
+	const FString& Namespace /*= FString(TEXT("/"))*/, 
+	TFunction< void(sio::message::list &)> ClientAckResponse /* = nullptr */)
 {
 	const TFunction< void(const FString&, const sio::message::ptr&)> SafeFunction = CallbackFunction;	//copy the function so it remains in context
 
 	PrivateClient->socket(USIOMessageConvert::StdString(Namespace))->on(
 		USIOMessageConvert::StdString(EventName),
-		sio::socket::event_listener_aux(
-			[&, SafeFunction](std::string const& name, sio::message::ptr const& data, bool isAck, sio::message::list &ack_resp)
+		sio::socket::event_listener_aux([&, SafeFunction](std::string const& name, sio::message::ptr const& data, bool isAck, sio::message::list &ack_resp)
 	{
 		const FString SafeName = USIOMessageConvert::FStringFromStd(name);
+
+		//update our ack_resp from client callback
+		if (ClientAckResponse)
+		{
+			ClientAckResponse(ack_resp);
+		}
 
 		FFunctionGraphTask::CreateAndDispatchWhenReady([&, SafeFunction, SafeName, data]
 		{

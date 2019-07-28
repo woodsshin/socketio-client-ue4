@@ -85,6 +85,11 @@ TSharedPtr<FJsonValue> USIOMessageConvert::ToJsonValue(const sio::message::ptr& 
 
 
 
+void USIOMessageConvert::FillRawArrayWithValue(sio::message::list& List, TSharedPtr<FJsonValue> Value)
+{
+	List.push(ToSIOMessage(Value));
+}
+
 sio::message::ptr USIOMessageConvert::ToSIOMessage(const TSharedPtr<FJsonValue>& JsonValue)
 {
 	if (!JsonValue.IsValid())

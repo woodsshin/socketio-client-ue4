@@ -201,10 +201,8 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "SocketIO Functions")
 	void BindEvent(const FString& EventName, const FString& Namespace = FString(TEXT("/")));
 
-
 	/**
-	* Bind an event to a function with the given name.
-	* Expects a String message signature which can be decoded from JSON into SIOJsonObject
+	* Bind an event to a Blueprint Function named. Target is the object owner of the function, defaults to current world context object.
 	*
 	* @param EventName		Event name
 	* @param FunctionName	The function that gets called when the event is received
@@ -216,6 +214,22 @@ public:
 								UObject* Target,
 								const FString& Namespace = FString(TEXT("/")),
 								UObject* WorldContextObject = nullptr);
+
+	/** This function isn't ready. Acknowledgement needs to happen on GT
+	* Bind an event to a Blueprint Function named with acknowledgment to server emit.
+	*
+	* @param EventName		Event name
+	* @param FunctionName	The function that gets called when the event is received
+	* @param Target			Optional, defaults to caller self. Change to delegate to another class.
+	*/
+	//UFUNCTION(BlueprintCallable, Category = "SocketIO Functions", meta = (WorldContext = "WorldContextObject"))
+	void BindEventToFunctionWithClientAck(const FString& EventName,
+		const FString& FunctionName,
+		const FString& AckFunctionName,
+		UObject* Target,
+		const FString& Namespace = FString(TEXT("/")),
+		UObject* WorldContextObject = nullptr);
+
 	//
 	//C++ functions
 	//

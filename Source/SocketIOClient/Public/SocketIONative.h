@@ -283,11 +283,13 @@ public:
 	* @param EventName	Event name
 	* @param TFunction	Lambda callback, JSONValue
 	* @param Namespace	Optional namespace, defaults to default namespace
+	* @param ClientAckResponse Optional callback to specify data for acknowledgment of message to server
 	*/
 	void OnEvent(
 		const FString& EventName,
 		TFunction< void(const FString&, const TSharedPtr<FJsonValue>&)> CallbackFunction,
-		const FString& Namespace = TEXT("/"));
+		const FString& Namespace = TEXT("/"),
+		TFunction< void(TSharedPtr<FJsonValue>&)> ClientAckResponse = nullptr);
 
 	/**
 	* Call function callback on receiving raw event. C++ only.
@@ -295,11 +297,13 @@ public:
 	* @param EventName	Event name
 	* @param TFunction	Lambda callback, raw flavor
 	* @param Namespace	Optional namespace, defaults to default namespace
+	* @param ClientAckResponse Optional callback to specify data for acknowledgment of message to server
 	*/
 	void OnRawEvent(
 		const FString& EventName,
 		TFunction< void(const FString&, const sio::message::ptr&)> CallbackFunction,
-		const FString& Namespace = TEXT("/"));
+		const FString& Namespace = TEXT("/"),
+		TFunction< void(sio::message::list &)> ClientAckResponse = nullptr);
 	/**
 	* Call function callback on receiving binary event. C++ only.
 	*

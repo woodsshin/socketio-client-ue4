@@ -596,6 +596,30 @@ void USocketIOClientComponent::BindEventToFunction(const FString& EventName, con
 	}
 }
 
+void USocketIOClientComponent::BindEventToFunctionWithClientAck(const FString& EventName, const FString& FunctionName, const FString& AckFunctionName, UObject* Target, const FString& Namespace /*= FString(TEXT("/"))*/, UObject* WorldContextObject /*= nullptr*/)
+{
+	if (!FunctionName.IsEmpty() && !AckFunctionName.IsEmpty())
+	{
+		if (Target == nullptr)
+		{
+			Target = WorldContextObject;
+		}
+		NativeClient->OnEvent(EventName, [&, FunctionName, Target](const FString& Event, const TSharedPtr<FJsonValue>& Message) 
+		{
+			CallBPFunctionWithMessage(Target, FunctionName, Message);
+		}, Namespace,
+		[&, AckFunctionName, Target](TSharedPtr<FJsonValue>& ResponseValue)
+		{
+			CallBPFunctionWithMessage(Target, AckFunctionName, ResponseValue);
+		});
+	}
+	else
+	{
+		//if we forgot our function name, fallback to regular bind event
+		BindEvent(EventName, Namespace);
+	}
+}
+
 void USocketIOClientComponent::OnNativeEvent(const FString& EventName, TFunction< void(const FString&, const TSharedPtr<FJsonValue>&)> CallbackFunction, const FString& Namespace /*= FString(TEXT("/"))*/)
 {
 	NativeClient->OnEvent(EventName, CallbackFunction, Namespace);
