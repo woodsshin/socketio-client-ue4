@@ -387,21 +387,21 @@ namespace sio
             // Connect open
             case packet::type_connect:
             {
-                LOG("Received Message type (Connect)"<<std::endl);
+                //LOG("Received Message type (Connect)"<<std::endl);
 
                 this->on_connected();
                 break;
             }
             case packet::type_disconnect:
             {
-                LOG("Received Message type (Disconnect)"<<std::endl);
+                //LOG("Received Message type (Disconnect)"<<std::endl);
                 this->on_close();
                 break;
             }
             case packet::type_event:
             case packet::type_binary_event:
             {
-                LOG("Received Message type (Event)"<<std::endl);
+                //LOG("Received Message type (Event)"<<std::endl);
                 const message::ptr ptr = p.get_message();
                 if(ptr->get_flag() == message::flag_array)
                 {
@@ -424,7 +424,7 @@ namespace sio
             case packet::type_ack:
             case packet::type_binary_ack:
             {
-                LOG("Received Message type (ACK)"<<std::endl);
+                //LOG("Received Message type (ACK)"<<std::endl);
                 const message::ptr ptr = p.get_message();
                 if(ptr->get_flag() == message::flag_array)
                 {
@@ -440,7 +440,7 @@ namespace sio
                 // Error
             case packet::type_error:
             {
-                LOG("Received Message type (ERROR)"<<std::endl);
+				//LOG("Received Message type (ERROR)"<<std::endl);
                 this->on_socketio_error(p.get_message());
                 break;
             }
@@ -496,7 +496,7 @@ namespace sio
             return;
         }
         m_connection_timer.reset();
-        LOG("Connection timeout,close socket."<<std::endl);
+        //LOG("Connection timeout,close socket."<<std::endl);
         //Should close socket if no connected message arrive.Otherwise we'll never ask for open again.
         this->on_close();
     }

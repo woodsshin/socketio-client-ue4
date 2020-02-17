@@ -259,6 +259,9 @@ namespace sio
 
 		friend class sio::client;
 		friend class sio::socket;
+
+		std::mutex m_thread_mutex;
+		bool m_destroyed;
 	};
 }
 #endif // SIO_CLIENT_IMPL_H

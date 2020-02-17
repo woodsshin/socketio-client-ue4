@@ -57,7 +57,8 @@ namespace sio
 		m_reconn_delay_max(25000),
 		m_reconn_attempts(0xFFFFFFFF),
 		m_reconn_made(0),
-		m_tcp_no_delay(true)	//nagle's algorithm disabled by default
+		m_tcp_no_delay(true),	//nagle's algorithm disabled by default
+		m_destroyed(false)
 	{
 		using websocketpp::log::alevel;
 #ifndef DEBUG
@@ -84,6 +85,8 @@ namespace sio
 
 	client_impl::~client_impl()
 	{
+		m_destroyed = true;
+
 		sync_close();
 	}
 
@@ -99,12 +102,21 @@ namespace sio
 		}
 		if(m_network_thread)
 		{
-			if(m_con_state == con_closing||m_con_state == con_closed)
+			if (m_con_state == con_closing || m_con_state == con_closed)
 			{
 				//if client is closing, join to wait.
 				//if client is closed, still need to join,
 				//but in closed case,join will return immediately.
-				m_network_thread->join();
+				lock_guard<mutex> guard(m_thread_mutex);
+				if (m_network_thread->joinable())
+				{
+					m_network_thread->join();
+				}
+				else
+				{
+					m_network_thread.reset();//defensive
+					return;
+				}
 				m_network_thread.reset();//defensive
 			}
 			else
@@ -129,9 +141,12 @@ namespace sio
 		m_http_headers = headers;
 
 		this->reset_states();
-		m_client.get_io_service().dispatch(lib::bind(&client_impl::connect_impl,this,uri,m_query_string));
-		m_network_thread.reset(new thread(lib::bind(&client_impl::run_loop,this)));//uri lifecycle?
 
+		if (!m_destroyed)
+		{
+			m_client.get_io_service().dispatch(lib::bind(&client_impl::connect_impl, this, uri, m_query_string));
+			m_network_thread.reset(new thread(lib::bind(&client_impl::run_loop, this)));//uri lifecycle?
+		}
 	}
 
 	socket::ptr const& client_impl::socket(string const& nsp)
@@ -179,9 +194,13 @@ namespace sio
 	void client_impl::sync_close()
 	{
 		this->close();
+		lock_guard<mutex> guard(m_thread_mutex);
 		if(m_network_thread)
 		{
-			m_network_thread->join();
+			if (m_network_thread->joinable())
+			{
+				m_network_thread->join();
+			}
 			m_network_thread.reset();
 		}
 	}
@@ -193,7 +212,7 @@ namespace sio
 	}
 
 	void client_impl::remove_socket(string const& nsp)
-	{
+	{		
 		lock_guard<mutex> guard(m_socket_mutex);
 		auto it = m_sockets.find(nsp);
 		if(it!= m_sockets.end())
@@ -220,7 +239,6 @@ namespace sio
 	/*************************private:*************************/
 	void client_impl::run_loop()
 	{
-
 		m_client.run();
 		m_client.reset();
 		m_client.get_alog().write(websocketpp::log::alevel::devel,
@@ -492,6 +510,12 @@ namespace sio
 		if(m_close_listener)
 		{
 			m_close_listener(reason);
+		}
+
+		lock_guard<mutex> guard(m_thread_mutex);
+		if (m_network_thread)
+		{
+			m_network_thread.reset();
 		}
 	}
 
